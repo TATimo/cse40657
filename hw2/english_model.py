@@ -12,7 +12,6 @@ class English(object):
         for j in range(0, self.m):
             self.counts[j] = c.defaultdict(int)
 
-    # check for something weird in concatenation--concatenatin the m-gram with the m-1-gram and m-2-gram and so forth
     def train(self, filename):
         """Train the model on a text file."""
         for line in open(filename):
@@ -20,18 +19,21 @@ class English(object):
                 temp = w
                 for j in range(0, self.m):
                     if i-j < 0:
-                        for z in range(i-1, -1, -1):
-                            temp = line[z] + temp
+#                        for z in range(i-1, -1, -1):
+#                            temp = line[z] + temp
+                        temp = line[0:i+1] #check indices
                         for k in range(0, j-i):
                             temp = '<s>' + temp
                     else:
-                        for z in range(i-1, i-j-1, -1):
-                            temp = line[z] + temp
+#                        for z in range(i-1, i-j-1, -1):
+#                            temp = line[z] + temp
+                        temp = line[i-j:i+1]
                     if temp not in self.counts[j]:
                         self.counts[j][temp] = 1
                     else:
                         self.counts[j][temp] += 1
                     self.vocab.add(temp) # unique characters
+                    temp = w
         for k in list(self.counts[4].keys()):
             print (k)
                     
