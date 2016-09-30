@@ -15,27 +15,35 @@ class English(object):
     def train(self, filename):
         """Train the model on a text file."""
         for line in open(filename):
+            line = line.strip()
             for i, w in enumerate(line):
                 temp = w
                 for j in range(0, self.m):
+                    # add start characters
                     if i-j < 0:
-#                        for z in range(i-1, -1, -1):
-#                            temp = line[z] + temp
                         temp = line[0:i+1] #check indices
                         for k in range(0, j-i):
                             temp = '<s>' + temp
                     else:
-#                        for z in range(i-1, i-j-1, -1):
-#                            temp = line[z] + temp
                         temp = line[i-j:i+1]
                     if temp not in self.counts[j]:
                         self.counts[j][temp] = 1
                     else:
                         self.counts[j][temp] += 1
                     self.vocab.add(temp) # unique characters
+                    # add stop characters
+                    if len(line)-i-1 < j:
+                        temp = line[i:len(line)]
+                        for k in range(0, j-(len(line)-i-1)):
+                            temp = temp + '</s>'
+                        if temp not in self.counts[j]:
+                            self.counts[j][temp] = 1
+                        else:
+                            self.counts[j][temp] += 1
+                        self.vocab.add(temp)
                     temp = w
-        for k in list(self.counts[4].keys()):
-            print (k)
+#        for k in list(self.counts[4].keys()):
+ #           print (k)
                     
     # The following two methods make the model work like a finite
     # automaton.
