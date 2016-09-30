@@ -11,6 +11,8 @@ class English(object):
         self.m = m # m-gram model
         for j in range(0, self.m):
             self.counts[j] = c.defaultdict(int)
+        self.state = ''
+        self.unigram = True if self.m == 1 else False
 
     def train(self, filename):
         """Train the model on a text file."""
@@ -41,33 +43,55 @@ class English(object):
                         else:
                             self.counts[j][temp] += 1
                         self.vocab.add(temp)
-                    temp = w
-#        for k in list(self.counts[4].keys()):
- #           print (k)
-                    
+                    temp = w                    
+
     # The following two methods make the model work like a finite
     # automaton.
 
     def start(self):
         """Resets the state."""
-        pass
+        self.state = ''
+        for i in range(1, self.m):
+            self.state = self.state + '<s>'
 
     def read(self, w):
         """Reads in character w, updating the state."""
-        pass
+        if self.unigram == True:
+            self.state = ''
+        elif self.state[0] == '<' and self.state[1] == 's' and self.state[2] == '>':
+            self.state = self.state[3:] + w
+        else:
+            self.state = self.state[1:] + w
 
     # The following two methods add probabilities to the finite automaton.
 
     def prob(self, w):
         """Returns the probability of the next character being w given the
         current state."""
-        return 1/(len(self.vocab)+1) # +1 for <unk>
+        probgram = {}
+        countSum = 0
+        for key in list(self.counts[0].keys()):
+            countSum += self.counts[0][key]
+        probgram[0] = self.counts[0][w]/countSum
+        if self.unigram == True:
+            return probgram[0]
+        else:
+            for z in range(1, self.m):
+                numWordTypes = 0
+                for i in list(self.counts[z-1].keys()):
+                    if self.state[(self.m-z-1):] in i:
+                        numWordTypes += 1
+                lamb = self.counts[z-1][self.state[(self.m-z-1):]]/(self.counts[z-1][self.state[(self.m-z-1):]] + numWordTypes)
+                probgram[z] = lamb*(self.counts[z-1][self.state[(self.m-z-1):]+w]/self.counts[z-1][self.state[(self.m-z-1):]]) + (1-lamb)*probgram[z-1]
+        print (probgram[self.m-1])
+        return probgram[self.m-1]
 
     def probs(self):
         """Returns a dict mapping from all characters in the vocabulary to the
 probabilities of each character."""
         return {w: self.prob(w) for w in self.vocab}
 
+# class below given by Professor David Chiang
 class Application(tk.Frame):
     def __init__(self, model, master=None):
         self.model = model
@@ -158,9 +182,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     ##### Replace this line with an instantiation of your model #####
-    m = English(5)
+    m = English(3)
     m.train(args.train)
     m.start()
+    m.read('t')
+    m.read('h')
+    m.prob('e')
 
     root = tk.Tk()
     app = Application(m, master=root)
