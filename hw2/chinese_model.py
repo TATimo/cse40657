@@ -3,7 +3,7 @@ import math
 import collections as c
 import tkinter as tk
 
-class English(object):
+class Chinese(object):
     """Barebones example of a language model class."""
 
     def __init__(self, m):
