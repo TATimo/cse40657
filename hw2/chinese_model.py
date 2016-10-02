@@ -13,7 +13,16 @@ class Chinese(object):
         for j in range(0, self.m):
             self.counts[j] = c.defaultdict()
         self.state = ''
+        self.charMap = {}
         self.unigram = True if self.m == 1 else False
+
+    def readCharMap(self, filename):
+        for line in open(filename):
+            words = line.split()
+            if words[1] not in self.charMap:
+                self.charMap[words[1]] = set()
+            self.charMap[words[1]].add(words[0])
+#        print(len(self.charMap['yi']))
 
     def train(self, filename):
         """Train the model on a text file."""
@@ -26,7 +35,7 @@ class Chinese(object):
                     if i-j < 0:
                         temp = line[0:i+1] #check indices
                         for k in range(0, j-i):
-                            temp = '~' + temp
+                            temp = '$' + temp
                     else:
                         temp = line[i-j:i+1]
                     # get context of character
@@ -51,7 +60,7 @@ class Chinese(object):
         """Resets the state."""
         self.state = ''
         for i in range(1, self.m):
-            self.state = self.state + '~'
+            self.state = self.state + '$'
 
     def read(self, w):
         """Reads in character w, updating the state."""
@@ -198,9 +207,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     ##### Replace this line with an instantiation of your model #####
-    m = English(10)
+    m = Chinese(3)
     m.train(args.train)
     m.start()
+    m.readCharMap("./hw2-files/chinese/charmap")
 
     counter = 0
     maxProb = 0
@@ -208,22 +218,35 @@ if __name__ == "__main__":
     numCorrect = 0
     totalGuess = 0
     lineCount = 0
-    logProbSum = 0
 
-    for line in open("./hw2-files/english/test"):
+    han = open("./hw2-files/chinese/test.han")
+    for line in open("./hw2-files/chinese/test.pin"):
         line = line.strip()
         if lineCount % 10 == 0:
             print(lineCount)
-        for c in line:
+        words = line.split()
+        for word in words:
 #            if counter >= 10:
 #                break
-#            logProbSum += math.log(m.prob(c))
-            for key in list(m.counts[0][''].keys()):
-                prob = m.prob(key)
-                if prob > maxProb:
-                    maxProb = prob
-                    maxChar = key
-            if c == maxChar:
+            if word not in m.charMap:
+                maxChar = word.strip()
+                maxProb = 1
+            else:
+                for pin in list(m.charMap[word]):
+                    prob = m.prob(pin)
+                    if prob > maxProb:
+                        maxProb = prob
+                        maxChar = pin
+                if len(word) == 1:
+                    prob = m.prob(word)
+                    if prob > maxProb:
+                        maxProb = prob
+                        maxChar = word
+            c = han.read(1)
+            # disregard newlines
+            while c == '\n':
+                c = han.read(1)
+            if c == maxChar or (c == ' ' and maxChar == '<space>'): 
                 numCorrect += 1
             m.read(c)
 #            print("%s, %f" % (maxChar, maxProb))
