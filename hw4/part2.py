@@ -2,7 +2,7 @@
 # CKY Parser
 
 import math
-import numpy as np
+import time
 from tree import Tree
 
 rules = {} # maps from left of rule to right of rule to frequency
@@ -51,6 +51,8 @@ def cond_prob():
 		left_count = 0
 
 def viterbi_cky(string):
+	
+	before = time.time()
 	s = string.split()
 
 	best = {} # dictionary of dictionary of dictionaries
@@ -65,7 +67,6 @@ def viterbi_cky(string):
 			back[i][j] = {}
 			for rule in rules:
 				best[i][j][rule] = 0
-#				best[i][j][rule] = -np.inf
 				back[i][j][rule] = []
 
 	# terminal probabilities
@@ -76,8 +77,6 @@ def viterbi_cky(string):
 			word = '<unk>'
 		for left in terminals[word]:
 			if prob[left][word] > best[i-1][i][left]:
-#			if math.log(prob[left][word]) > best[i-1][i][left]:
-#				best[i-1][i][left] = math.log(prob[left][word])
 				best[i-1][i][left] = prob[left][word]
 				back[i-1][i][left].append(word)
 
@@ -93,13 +92,17 @@ def viterbi_cky(string):
 							continue
 						else:
 							p = prob[rule][right] * best[i][k][r[0]] * best[k][j][r[1]]
-#							p = math.log(prob[rule][right]) + best[i][k][r[0]] + best[k][j][r[1]]
 							if p > best[i][j][rule]:
 								best[i][j][rule] = p
 								back[i][j][rule] = []
 								back[i][j][rule].append(r[0])
 								back[i][j][rule].append(r[1])
 								back[i][j][rule].append(k)
+	after = time.time()
+
+#	print('Log of sentence length: ' + str(math.log(len(s))) + ' Log of time: ' + str(math.log(after - before)), end = '')
+#	print('Log-probability of output: ' + str(math.log(best[0][len(s)]['TOP'])))
+
 	if back[0][len(s)]['TOP'] == []:
 		print('', end = '')
 	else:
