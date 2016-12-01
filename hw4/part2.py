@@ -101,7 +101,7 @@ def viterbi_cky(string):
 	after = time.time()
 
 #	print('Log of sentence length: ' + str(math.log(len(s))) + ' Log of time: ' + str(math.log(after - before)), end = '')
-#	print('Log-probability of output: ' + str(math.log(best[0][len(s)]['TOP'])))
+#	print('Log-probability of output: ' + str(math.log(best[0][len(s)]['TOP'], 10)))
 
 	if back[0][len(s)]['TOP'] == []:
 		print('', end = '')
