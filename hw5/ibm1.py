@@ -6,21 +6,20 @@ import numpy as np
 import random
 
 training = []
+testing = []
 lambdas = {} # lambda of f given e (f and e are in the same line)
 inverse = {} # maps e to every f in the same line (for looking up lambdas)
+t_values = {} # maps e to f to t(f|e) value
 
 def read():
+	inverse['NULL'] = set()
 	for line in open("./hw5-files/data-a/episode1.zh-en"):
 		training.append(line)
+		testing.append(line)
 		zh_en = line.split('\t')
-
-		if len(zh_en) > 2: # sanity check, can probably remove this later
-			print('More than one tab in data')
 
 		zh_words = zh_en[0].split()
 		en_words = zh_en[1].split()
-
-		inverse['NULL'] = set()
 
 		for zh in zh_words:
 			if zh not in lambdas:
@@ -32,6 +31,10 @@ def read():
 				lambdas[zh][en] = 0 # initialize all lambdas to 0
 			inverse['NULL'].add(zh)
 			lambdas[zh]['NULL'] = 0
+		
+	for e in inverse.keys():
+		t_values[e] = {}
+		t_f_e(e)
 
 def log_prob(sentence):
 	zh_en = sentence.split('\t')
@@ -45,16 +48,17 @@ def log_prob(sentence):
 	for j in range(1, len(zh_words) + 1):
 		forward[j] = 0
 		for i in range(1, len(en_words) + 1):
-			forward[j] += forward[j-1] * (1/(len(en_words) + 1)) * t_f_e(zh_words[j-1], en_words[i-1])
-		forward[j] += forward[j-1] * (1/(len(en_words) + 1)) * t_f_e(zh_words[j-1], 'NULL')
+			forward[j] += forward[j-1] * (1/(len(en_words) + 1)) * t_values[en_words[i-1]][zh_words[j-1]]
+		forward[j] += forward[j-1] * (1/(len(en_words) + 1)) * t_values['NULL'][zh_words[j-1]]
 
 	return math.log((1/100)*forward[len(zh_words)])
 
-def t_f_e(f, e):
+def t_f_e(e):
 	summation = 0
 	for zh in inverse[e]:
 		summation += math.exp(lambdas[zh][e])
-	return (math.exp(lambdas[f][e]) / summation)
+	for zh in inverse[e]:
+		t_values[e][zh] = math.exp(lambdas[zh][e]) / summation
 
 def log_prob_5():
 	counter = 0
@@ -65,11 +69,11 @@ def log_prob_5():
 			break
 		print('Line ' + str(counter) + ' log-probability: ' + str(log_prob(line)))
 
-def sga(): # definitely need to verify ranges
+def sga():
 	summation = 0
 	for line in training:
 		summation += log_prob(line)
-	print('Iteration 0 log-probability sum: ' + str(summation)) # before training
+	print('Iteration 0 log-probability: ' + str(summation)) # before training
 
 	T = 10 # number of iterations
 	for t in range(1, T+1):
@@ -85,31 +89,68 @@ def sga(): # definitely need to verify ranges
 			for j in range(1, len(zh_words) + 1):
 				summation = 0
 				for l in range(1, len(en_words) + 1):
-					summation += t_f_e(zh_words[j-1], en_words[l-1])
-				z = t_f_e(zh_words[j-1], 'NULL') + summation
+					summation += t_values[en_words[l-1]][zh_words[j-1]]
+				z = t_values['NULL'][zh_words[j-1]] + summation
+				t_f_e('NULL')
 				for i in range(0, len(en_words) + 1):
 					if i == 0:
-						p = t_f_e(zh_words[j-1], 'NULL') / z
+						p = t_values['NULL'][zh_words[j-1]] / z
 						lambdas[zh_words[j-1]]['NULL'] += (eta * p)
-						for word in zh_words:
-							lambdas[word]['NULL'] -= (eta * p * t_f_e(word, 'NULL'))
+						for zh in inverse['NULL']:
+							lambdas[zh]['NULL'] -= (eta * p * t_values['NULL'][zh])
 					else:
-						p = t_f_e(zh_words[j-1], en_words[i-1]) / z
+						t_f_e(en_words[i-1])
+						p = t_values[en_words[i-1]][zh_words[j-1]] / z
 						lambdas[zh_words[j-1]][en_words[i-1]] += (eta * p)
-						for word in zh_words:
-							lambdas[word][en_words[i-1]] -= (eta * p * t_f_e(word, en_words[i-1]))
+						for zh in inverse[en_words[i-1]]:
+							lambdas[zh][en_words[i-1]] -= (eta * p * t_values[en_words[i-1]][zh])
+				t_f_e('NULL')
+				t_f_e(en_words[i-1])
 
-		print('Iteration ' + str(t) + ' log-probability sum: ' + str(log_like))
+		print('Iteration ' + str(t) + ' log-probability: ' + str(log_like))
 
 def report_word_pairs():
-	print('t(绝地|jedi) = ' + str(t_f_e('绝地', 'jedi')))
-	print('t(机械人|droid) = ' + str(t_f_e('机械人', 'droid')))
-	print('t(原力|force) = ' + str(t_f_e('原力', 'force')))
-	print('t(原虫|midi-chlorians) = ' + str(t_f_e('原虫', 'midi-chlorians')))
-	print('t(你|yousa) = ' + str(t_f_e('你', 'yousa')))
+	print('t(绝地|jedi) = ' + str(t_values['jedi']['绝地']))
+	print('t(机械人|droid) = ' + str(t_values['droid']['机械人']))
+	print('t(原力|force) = ' + str(t_values['force']['原力']))
+	print('t(原虫|midi-chlorians) = ' + str(t_values['midi-chlorians']['原虫']))
+	print('t(你|yousa) = ' + str(t_values['yousa']['你']))
+
+def test():
+	for line in testing:
+		zh_en = line.split('\t')
+		zh_words = zh_en[0].split()
+		en_words = zh_en[1].split()
+		
+		a = np.empty(len(zh_words), dtype = int)
+		for n in range(0, len(a)):
+			a[n] = -1
+
+		first = 1
+		for i, zh in enumerate(zh_words):
+			arg_max = 0
+			for j, en in enumerate(en_words):
+				t = t_values[en][zh]
+				if t > arg_max:
+					arg_max = t
+					a[i] = j
+			t = t_values['NULL'][zh]
+			if t > arg_max:
+				arg_max = t
+				a[i] = -1
+
+		for k in range(0, len(a)):
+			if a[k] != -1:
+				if first == 1:
+					print(str(k) + '-' + str(a[k]), end = '')
+					first = 0
+				else:
+					print(' ' + str(k) + '-' + str(a[k]), end = '')
+		print()
 
 if __name__ == '__main__':
 	read()
 #	log_prob_5()
 	sga()
-	report_word_pairs()
+#	report_word_pairs()
+	test()
